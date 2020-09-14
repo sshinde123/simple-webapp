@@ -1,0 +1,59 @@
+
+- name: this is the first playbook to setup simple webapp
+  hosts: target1,target2
+  become: yes
+  become_method: sudo
+  tasks:
+    - name: install epel repo 
+      yum:
+        name: epel-release
+        state: installed
+        update_cache: true
+    - name:  install all required dependency 
+      yum:
+        name: wget,curl,vim,mlocate,python,python-setuptools,python-pip
+        state: installed
+        update_cache: true
+    - name: Download mysql sources
+      get_url:
+        url: http://repo.mysql.com/mysql-community-release-el7-7.noarch.rpm
+        dest: /opt/
+    - name: Install mysql noarch rpm 
+      yum:
+       name: /opt/mysql-community-release-el7-7.noarch.rpm
+       state: present
+       update_cache: true
+    - name: Clean all yum data
+      command: yum clean all
+      args:
+        warn: yes           
+    - name:  install all mysql server and client 
+      yum:
+        name: mysql-server,mysql,MySQL-python
+        state: present
+    - name: start the MySQL service
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+    - name: Create database in MySQL for the application
+      mysql_db: 
+        name=employee_db 
+        state=present
+    - name: create database user in db "employee_db"
+      mysql_user: 
+        name: db_user
+        password: Passw0rd
+        priv: '*.*:ALL,GRANT'
+        state: present
+        host: 'localhost' 
+    - name: Install python Flask dependency
+      pip:
+        name: flask,flask-mysql
+        state: present
+    - name: copy source code app.py
+      copy: 
+        src: app.py 
+        dest: /opt/app.py
+    - name: start web server
+      shell: FLASK_APP=/opt/app.py flask run --host=0.0.0.0 &
